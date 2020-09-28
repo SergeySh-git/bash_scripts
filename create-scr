@@ -1,0 +1,98 @@
+#! /bin/bash
+
+DIR_SCRIPT="$HOME/bin"
+declare -A arr_shell
+
+arr_shell=(
+	[sh]="/bin/sh"
+	[bash]="/bin/bash"
+	[python]="/usr/bin/python3"
+)
+
+[[ "$#" == 0 ]] && {
+	echo "incorrect input"
+	echo "usage -h for print help"
+	exit 65
+}
+
+check_homedir() {
+	if [ ! -d $DIR_SCRIPT ]; then
+		echo "Directory ~/bin not exist"
+		read -p "Create ~/bin?(otherwise the script will be created in $HOME) [y/n] " i
+		if [[ "$i" == "y" ]]; then
+			mkdir -p $DIR_SCRIPT
+			echo "Directory ~/bin created. Necessary to change the value \$PATH"
+		elif [[ "$i" == "n" ]]; then
+			DIR_SCRIPT=$HOME
+		else
+			check_homedir
+		fi	
+	fi
+}
+
+
+check_perm() {
+	read -p "input mode for script [default: 755]> " perm
+	[ -z $perm ] && {
+		perm=755
+	}
+
+	[[ $perm =~ ^[0-7]{3,4}$ ]] || {
+		echo "incorrect input"
+		check_perm
+	}
+}
+
+create_script() {
+	touch $DIR_SCRIPT/$1
+	chmod $2 $_
+	echo "#!${arr_shell[$3]}" > $_
+	vim $DIR_SCRIPT/$1
+}
+
+check_shell() {
+	PS3="select shell: "
+	select sh in "${!arr_shell[@]}"
+	do
+		break
+	done 
+	
+}
+
+get_help() {
+	echo "
+$(basename "$0") [-h] [-i] -- program to create shell-scripts
+where:
+	-h  show this help text
+	-i  interactive mode
+"
+
+}
+check_name() {
+	read -p "input name script> " name
+	[ -z $name ] && check_name
+	command -v $name >/dev/null 2>&1 && {
+		echo "command exist"
+		check_name 
+	}
+	
+	[ -f $DIR_SCRIPT/$name ] && {
+		echo "file exist"
+		check_name 
+	}
+}
+
+while getopts ":hi" opt; do
+	case $opt in
+		h) get_help;;
+
+		i) check_homedir
+		   check_name
+		   check_perm
+		   check_shell
+		   create_script $name $perm $sh;;
+	
+		*) get_help
+	esac
+done
+
